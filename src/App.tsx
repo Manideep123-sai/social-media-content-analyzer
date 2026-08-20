@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { FileUpload } from './components/FileUpload';
 import { TextInput } from './components/TextInput';
@@ -19,6 +19,24 @@ export const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('gemini_api_key') || '');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  
+  // Theme state: default to dark (Matte Black) or read from localStorage
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress>({
     status: 'idle',
@@ -193,12 +211,14 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen dark:bg-matte-950 bg-slate-50 dark:text-slate-100 text-slate-900 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       {/* Navigation & Toolbar */}
       <Header
         apiKey={apiKey}
         onSaveApiKey={handleSaveApiKey}
         onLoadSample={handleLoadSample}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Content Container */}
@@ -206,28 +226,30 @@ export const App: React.FC = () => {
         
         {/* Hero Banner */}
         <section className="text-center max-w-3xl mx-auto space-y-2 pt-2">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-300 text-xs font-semibold">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             <span>AI + OCR Social Intelligence Platform</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-extrabold dark:text-white text-slate-900 tracking-tight">
             Social Media Content Analyzer
           </h1>
-          <p className="text-sm sm:text-base text-slate-400">
+          <p className="text-sm sm:text-base dark:text-slate-400 text-slate-600">
             Upload PDF drafts or scanned post images to extract text via OCR, evaluate engagement with blunt, realistic AI critiques, and optimize for LinkedIn, X, and Instagram.
           </p>
         </section>
 
         {/* Step 1: Upload Zone */}
-        <section className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl">
+        <section className="dark:bg-matte-900/90 bg-white border dark:border-matte-800 border-slate-200 rounded-3xl p-5 sm:p-7 shadow-xl transition-colors duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
-              <span className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+              <span className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
                 1
               </span>
-              <h2 className="font-bold text-base sm:text-lg text-white">Upload Document or Scanned Post</h2>
+              <h2 className="font-bold text-base sm:text-lg dark:text-white text-slate-900">
+                Upload Document or Scanned Post
+              </h2>
             </div>
-            <span className="text-xs text-slate-400 hidden sm:inline">
+            <span className="text-xs dark:text-slate-400 text-slate-500 hidden sm:inline">
               PDF Parsing + Tesseract.js OCR
             </span>
           </div>
@@ -242,10 +264,10 @@ export const App: React.FC = () => {
         {/* Step 2 & 3: Side-by-Side Extracted Text & Engagement Analysis */}
         <section className="space-y-4">
           <div className="flex items-center space-x-2">
-            <span className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+            <span className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
               2
             </span>
-            <h2 className="font-bold text-base sm:text-lg text-white">
+            <h2 className="font-bold text-base sm:text-lg dark:text-white text-slate-900">
               Extracted Content & Engagement Analysis
             </h2>
           </div>
@@ -265,45 +287,45 @@ export const App: React.FC = () => {
             {/* Right Column: Score & Breakdown Dashboard */}
             <div className="lg:col-span-7">
               {isAnalyzing ? (
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-3">
-                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-                  <p className="text-sm font-semibold text-slate-200">
+                <div className="dark:bg-matte-900/90 bg-white border dark:border-matte-800 border-slate-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-3 shadow-lg">
+                  <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                  <p className="text-sm font-semibold dark:text-slate-200 text-slate-800">
                     {apiKey ? 'Running Live Gemini AI Analysis...' : 'Calculating Engagement Heuristics...'}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs dark:text-slate-400 text-slate-500">
                     Evaluating hook strength, cadence, CTAs, and platform rules...
                   </p>
                 </div>
               ) : analysisResult ? (
                 <AnalysisDashboard result={analysisResult} />
               ) : (
-                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <div className="dark:bg-matte-900/90 bg-white border dark:border-matte-800 border-slate-200 rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-lg transition-colors duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
                     <Sparkles className="w-8 h-8" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Ready to Analyze</h3>
-                    <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md">
+                    <h3 className="text-lg font-bold dark:text-white text-slate-900">Ready to Analyze</h3>
+                    <p className="text-xs sm:text-sm dark:text-slate-400 text-slate-600 mt-1 max-w-md">
                       Upload a PDF document, scan an image with OCR, or paste your post copy to evaluate engagement score, readability, and platform rules.
                     </p>
                   </div>
                   <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
-                    <span className="text-xs text-slate-400 mr-1">Quick test:</span>
+                    <span className="text-xs dark:text-slate-400 text-slate-500 mr-1">Quick test:</span>
                     <button
                       onClick={() => handleLoadSample('linkedin')}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                      className="px-3 py-1.5 dark:bg-matte-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-matte-750 dark:text-slate-200 text-slate-700 border dark:border-matte-700 border-slate-200 text-xs font-semibold rounded-xl transition-colors"
                     >
                       LinkedIn Post
                     </button>
                     <button
                       onClick={() => handleLoadSample('x')}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                      className="px-3 py-1.5 dark:bg-matte-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-matte-750 dark:text-slate-200 text-slate-700 border dark:border-matte-700 border-slate-200 text-xs font-semibold rounded-xl transition-colors"
                     >
                       X / Twitter
                     </button>
                     <button
                       onClick={() => handleLoadSample('pdf')}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                      className="px-3 py-1.5 dark:bg-matte-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-matte-750 dark:text-slate-200 text-slate-700 border dark:border-matte-700 border-slate-200 text-xs font-semibold rounded-xl transition-colors"
                     >
                       Strategy PDF
                     </button>
@@ -339,16 +361,18 @@ export const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 text-center text-xs text-slate-500 mt-12">
+      <footer className="border-t dark:border-matte-800 border-slate-200 dark:bg-matte-950 bg-white py-8 text-center text-xs dark:text-slate-500 text-slate-500 mt-12 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 space-y-2">
-          <div className="flex items-center justify-center space-x-2 text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-indigo-400" />
-            <span className="font-semibold text-slate-300">Technical Assessment Project: Social Media Content Analyzer</span>
+          <div className="flex items-center justify-center space-x-2 dark:text-slate-400 text-slate-700">
+            <ShieldCheck className="w-4 h-4 text-indigo-500" />
+            <span className="font-semibold dark:text-slate-300 text-slate-800">
+              Technical Assessment Project: Social Media Content Analyzer
+            </span>
           </div>
           <p>
             Built with React, TypeScript, Tailwind CSS, pdfjs-dist, and Tesseract.js. Powered by Google Gemini AI with client-side key storage.
           </p>
-          <div className="pt-2 flex items-center justify-center space-x-4 text-indigo-400">
+          <div className="pt-2 flex items-center justify-center space-x-4 text-indigo-600 dark:text-indigo-400">
             <a
               href="https://github.com/Manideep123-sai/social-media-content-analyzer"
               target="_blank"
