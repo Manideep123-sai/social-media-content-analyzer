@@ -611,6 +611,7 @@ export function analyzeContent(
     platforms,
     detectedTone: toneResult.detectedTone,
     sourceType,
+    analysisMode: 'heuristic',
     timestamp: new Date().toLocaleTimeString()
   };
 }

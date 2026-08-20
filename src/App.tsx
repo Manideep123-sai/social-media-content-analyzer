@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Header } from './components/Header';
+import { ApiKeyBanner } from './components/ApiKeyBanner';
 import { FileUpload } from './components/FileUpload';
 import { TextInput } from './components/TextInput';
 import { AnalysisDashboard } from './components/AnalysisDashboard';
@@ -8,9 +9,10 @@ import { SuggestionsPanel } from './components/SuggestionsPanel';
 import { extractTextFromPDF } from './lib/pdfParser';
 import { extractTextFromImage } from './lib/ocr';
 import { analyzeContent } from './lib/analyzer';
+import { analyzeContentWithAI } from './lib/aiService';
 import { AnalysisResult, ExtractionProgress } from './types';
 import { SAMPLES } from './samples';
-import { FileText, Sparkles, CheckCircle2, ArrowDown, HelpCircle, ShieldCheck } from 'lucide-react';
+import { Sparkles, ShieldCheck, Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [content, setContent] = useState<string>('');
@@ -25,12 +27,43 @@ export const App: React.FC = () => {
     message: ''
   });
 
+  const executeAnalysis = async (
+    text: string,
+    srcType: 'pdf' | 'image' | 'text' | 'sample' = sourceType,
+    keyToUse: string = apiKey
+  ) => {
+    if (!text.trim()) return;
+    setIsAnalyzing(true);
+
+    try {
+      if (keyToUse) {
+        const aiRes = await analyzeContentWithAI(text, keyToUse, srcType);
+        setAnalysisResult(aiRes);
+      } else {
+        const heurRes = analyzeContent(text, srcType);
+        setAnalysisResult(heurRes);
+      }
+    } catch (err) {
+      console.warn('AI analysis fell back to heuristic engine:', err);
+      const heurRes = analyzeContent(text, srcType);
+      setAnalysisResult(heurRes);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleSaveApiKey = (key: string) => {
     setApiKey(key);
     if (key) {
       localStorage.setItem('gemini_api_key', key);
+      if (content.trim()) {
+        executeAnalysis(content, sourceType, key);
+      }
     } else {
       localStorage.removeItem('gemini_api_key');
+      if (content.trim()) {
+        executeAnalysis(content, sourceType, '');
+      }
     }
   };
 
@@ -46,8 +79,7 @@ export const App: React.FC = () => {
       message: ''
     });
 
-    const res = analyzeContent(sample.content, sample.sourceType);
-    setAnalysisResult(res);
+    executeAnalysis(sample.content, sample.sourceType);
   };
 
   const handleFileSelected = async (file: File) => {
@@ -97,9 +129,7 @@ export const App: React.FC = () => {
           message: `Successfully extracted text (${result.pageCount} page${result.pageCount > 1 ? 's' : ''})`
         });
 
-        // Run analysis
-        const res = analyzeContent(result.text, 'pdf');
-        setAnalysisResult(res);
+        await executeAnalysis(result.text, 'pdf');
 
       } else {
         // Image OCR
@@ -134,9 +164,7 @@ export const App: React.FC = () => {
           message: `OCR Complete (Confidence: ${Math.round(result.confidence)}%)`
         });
 
-        // Run analysis
-        const res = analyzeContent(result.text, 'image');
-        setAnalysisResult(res);
+        await executeAnalysis(result.text, 'image');
       }
     } catch (err) {
       console.error('Extraction failure:', err);
@@ -150,18 +178,11 @@ export const App: React.FC = () => {
   };
 
   const handleManualAnalyze = (textToAnalyze: string) => {
-    if (!textToAnalyze.trim()) return;
-    setIsAnalyzing(true);
-    setTimeout(() => {
-      const res = analyzeContent(textToAnalyze, sourceType);
-      setAnalysisResult(res);
-      setIsAnalyzing(false);
-    }, 150);
+    executeAnalysis(textToAnalyze, sourceType);
   };
 
   const handleContentChange = (newText: string) => {
     setContent(newText);
-    // If text was modified manually, update source type if it was idle
     if (sourceType === 'sample') {
       setSourceType('text');
     }
@@ -169,8 +190,7 @@ export const App: React.FC = () => {
 
   const handleApplyAiText = (newText: string) => {
     setContent(newText);
-    const res = analyzeContent(newText, 'text');
-    setAnalysisResult(res);
+    executeAnalysis(newText, 'text');
   };
 
   return (
@@ -183,19 +203,27 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         
+        {/* Prominent API Key Banner */}
+        <ApiKeyBanner
+          apiKey={apiKey}
+          onSaveApiKey={handleSaveApiKey}
+          onRunAiAnalysis={() => content.trim() && executeAnalysis(content, sourceType)}
+          hasContent={!!content.trim()}
+        />
+
         {/* Hero Banner */}
-        <section className="text-center max-w-3xl mx-auto space-y-2.5">
+        <section className="text-center max-w-3xl mx-auto space-y-2 pt-2">
           <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Practical Assessment Solution • Production Grade</span>
+            <span>AI + OCR Social Intelligence Platform</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
             Social Media Content Analyzer
           </h1>
           <p className="text-sm sm:text-base text-slate-400">
-            Upload PDF drafts or scanned post images to extract text via OCR, evaluate engagement with transparent heuristic scoring, and optimize for LinkedIn, X, and Instagram.
+            Upload PDF drafts or scanned post images to extract text via OCR, evaluate engagement with blunt, realistic AI critiques, and optimize for LinkedIn, X, and Instagram.
           </p>
         </section>
 
@@ -227,7 +255,7 @@ export const App: React.FC = () => {
               2
             </span>
             <h2 className="font-bold text-base sm:text-lg text-white">
-              Extracted Content & Heuristic Engagement Analysis
+              Extracted Content & Engagement Analysis
             </h2>
           </div>
 
@@ -245,7 +273,17 @@ export const App: React.FC = () => {
 
             {/* Right Column: Score & Breakdown Dashboard */}
             <div className="lg:col-span-7">
-              {analysisResult ? (
+              {isAnalyzing ? (
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-3">
+                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                  <p className="text-sm font-semibold text-slate-200">
+                    {apiKey ? 'Running Live Gemini AI Analysis...' : 'Calculating Engagement Heuristics...'}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Evaluating hook strength, cadence, CTAs, and platform rules...
+                  </p>
+                </div>
+              ) : analysisResult ? (
                 <AnalysisDashboard result={analysisResult} />
               ) : (
                 <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4">
@@ -317,7 +355,7 @@ export const App: React.FC = () => {
             <span className="font-semibold text-slate-300">Technical Assessment Project: Social Media Content Analyzer</span>
           </div>
           <p>
-            Built with React, TypeScript, Tailwind CSS, pdfjs-dist, and Tesseract.js. Designed with a transparent heuristic scoring engine and 100% client-side privacy.
+            Built with React, TypeScript, Tailwind CSS, pdfjs-dist, and Tesseract.js. Powered by Google Gemini AI with client-side key storage.
           </p>
           <div className="pt-2 flex items-center justify-center space-x-4 text-indigo-400">
             <a

@@ -64,6 +64,8 @@ export interface AnalysisResult {
   };
   detectedTone: string;
   sourceType: 'pdf' | 'image' | 'text' | 'sample';
+  analysisMode: 'ai' | 'heuristic';
+  aiCritique?: string;
   timestamp: string;
 }
 

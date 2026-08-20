@@ -11,7 +11,8 @@ import {
   Clock,
   Type,
   TrendingUp,
-  Award
+  Award,
+  Sparkles
 } from 'lucide-react';
 import { AnalysisResult, MetricScore } from '../types';
 
@@ -120,7 +121,14 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result }) 
                   Engagement Score
                 </span>
                 <span className="text-xs text-slate-500">•</span>
-                <span className="text-xs text-indigo-400 font-medium">Heuristic Model</span>
+                {result.analysisMode === 'ai' ? (
+                  <span className="inline-flex items-center space-x-1 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    <Sparkles className="w-3 h-3 text-emerald-400" />
+                    <span>Gemini AI Analysis</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-indigo-400 font-medium">Heuristic Model</span>
+                )}
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-white mt-0.5">
                 {tier}
@@ -128,6 +136,16 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result }) 
               <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
                 {result.summary}
               </p>
+
+              {result.aiCritique && (
+                <div className="mt-3 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl text-xs text-indigo-200/90 flex items-start space-x-2">
+                  <Flame className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-amber-300">Blunt Take: </span>
+                    <span>{result.aiCritique}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
