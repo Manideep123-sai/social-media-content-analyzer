@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Header } from './components/Header';
-import { ApiKeyBanner } from './components/ApiKeyBanner';
 import { FileUpload } from './components/FileUpload';
 import { TextInput } from './components/TextInput';
 import { AnalysisDashboard } from './components/AnalysisDashboard';
@@ -205,14 +204,6 @@ export const App: React.FC = () => {
       {/* Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         
-        {/* Prominent API Key Banner */}
-        <ApiKeyBanner
-          apiKey={apiKey}
-          onSaveApiKey={handleSaveApiKey}
-          onRunAiAnalysis={() => content.trim() && executeAnalysis(content, sourceType)}
-          hasContent={!!content.trim()}
-        />
-
         {/* Hero Banner */}
         <section className="text-center max-w-3xl mx-auto space-y-2 pt-2">
           <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-300 text-xs font-semibold">
