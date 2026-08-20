@@ -545,6 +545,30 @@ function generateActionableSuggestions(text: string, stats: TextStats): Suggesti
   };
 }
 
+function isGibberishOrLowQuality(text: string): boolean {
+  const clean = text.trim();
+  if (clean.length < 5) return true;
+
+  const letters = clean.match(/[a-zA-Z]/g) || [];
+  if (letters.length < 4) return true;
+
+  const vowels = clean.match(/[aeiouyAEIOUY]/g) || [];
+  const vowelRatio = vowels.length / letters.length;
+
+  // English words typically have 20%-65% vowels. Random keys like 'sfdfhnsdjkfbjkfk' have < 15% vowels.
+  if (vowelRatio < 0.15 || vowelRatio > 0.75) {
+    return true;
+  }
+
+  const words = clean.split(/\s+/);
+  const hasAbsurdlyLongWord = words.some(w => w.length > 25);
+  if (hasAbsurdlyLongWord) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Main Analysis Orchestrator
  */
@@ -554,6 +578,131 @@ export function analyzeContent(
 ): AnalysisResult {
   const cleanText = rawText.trim();
   const stats = calculateTextStats(cleanText);
+  const isGibberish = isGibberishOrLowQuality(cleanText);
+
+  // If gibberish / random characters detected
+  if (isGibberish) {
+    const lowHook: MetricScore = {
+      name: 'Hook Strength',
+      score: 2,
+      maxScore: 20,
+      rating: 'Needs Improvement',
+      explanation: 'Opening text contains unrecognizable or corrupted characters.',
+      tips: ['Start with a clear, readable statement or question.']
+    };
+    const lowRead: MetricScore = {
+      name: 'Readability & Flow',
+      score: 2,
+      maxScore: 20,
+      rating: 'Needs Improvement',
+      explanation: 'Vocabulary is unintelligible with abnormal vowel distribution.',
+      tips: ['Use recognizable dictionary words and natural sentence structures.']
+    };
+    const lowCta: MetricScore = {
+      name: 'Call to Action (CTA)',
+      score: 2,
+      maxScore: 20,
+      rating: 'Needs Improvement',
+      explanation: 'No coherent closing prompt or call to action found.',
+      tips: ['Add an engaging closing question for your audience.']
+    };
+    const lowFormat: MetricScore = {
+      name: 'Visual Formatting & Whitespace',
+      score: 3,
+      maxScore: 20,
+      rating: 'Needs Improvement',
+      explanation: 'Unstructured text format.',
+      tips: ['Break thoughts into concise 1–2 line paragraphs.']
+    };
+    const lowTags: MetricScore = {
+      name: 'Hashtag & Visual Polish',
+      score: 2,
+      maxScore: 10,
+      rating: 'Needs Improvement',
+      explanation: 'No valid hashtags or visual anchors identified.',
+      tips: ['Add 2–3 relevant topic hashtags.']
+    };
+    const lowTone: MetricScore = {
+      name: 'Tone & Sentiment',
+      score: 2,
+      maxScore: 10,
+      rating: 'Needs Improvement',
+      explanation: 'Unintelligible text tone.',
+      tips: ['Write with direct, conversational voice.']
+    };
+
+    return {
+      overallScore: 13,
+      tier: 'Needs Major Improvement',
+      summary: 'Unintelligible or low-quality input detected. The text appears to be random characters or lacks grammatical structure.',
+      aiCritique: 'Blunt Assessment: This input contains random/corrupted characters and will produce 0 reader engagement.',
+      stats,
+      metrics: {
+        hook: lowHook,
+        readability: lowRead,
+        cta: lowCta,
+        formatting: lowFormat,
+        hashtags: lowTags,
+        tone: lowTone
+      },
+      strengths: [],
+      improvements: [
+        'Replace random characters with readable words',
+        'Form coherent 1–2 line sentences',
+        'Provide a clear topic and call to action'
+      ],
+      suggestions: {
+        hooks: [
+          '❓ Question Hook: "What is the biggest challenge your team faces this quarter?"',
+          '📊 Data Hook: "80% of projects fail for this single preventable reason:"',
+          '🔥 Story Hook: "Here is the biggest lesson I learned from my worst mistake:"'
+        ],
+        ctas: [
+          '💬 "What has been your experience? Drop your thoughts below!"',
+          '📌 "Save this framework for your next review session."'
+        ],
+        formattingTips: ['Write in natural, human-readable language.'],
+        recommendedHashtags: ['#ContentStrategy', '#Productivity'],
+        toneAdvice: 'Focus on clear, readable communication.'
+      },
+      platforms: {
+        linkedin: {
+          platform: 'LinkedIn',
+          score: 15,
+          characterCount: stats.charCount,
+          maxRecommendedCharacters: 1500,
+          hardLimit: 3000,
+          status: 'Needs Adjustment',
+          highlights: [],
+          recommendations: ['Post is unreadable. Re-enter meaningful content.']
+        },
+        x: {
+          platform: 'X (Twitter)',
+          score: 15,
+          characterCount: stats.charCount,
+          maxRecommendedCharacters: 280,
+          hardLimit: 280,
+          status: 'Needs Adjustment',
+          highlights: [],
+          recommendations: ['Post is unreadable. Re-enter meaningful content.']
+        },
+        instagram: {
+          platform: 'Instagram',
+          score: 15,
+          characterCount: stats.charCount,
+          maxRecommendedCharacters: 1000,
+          hardLimit: 2200,
+          status: 'Needs Adjustment',
+          highlights: [],
+          recommendations: ['Post is unreadable. Re-enter meaningful content.']
+        }
+      },
+      detectedTone: 'Unintelligible / Noise',
+      sourceType,
+      analysisMode: 'heuristic',
+      timestamp: new Date().toLocaleTimeString()
+    };
+  }
 
   // Evaluate 6 distinct transparent metrics
   const hookMetric = evaluateHook(cleanText, stats);
