@@ -24,7 +24,8 @@ const CONVERSATIONAL_WORDS = [
   'you', 'your', 'we', 'i', 'honestly', 'remember', 'imagine', 'here is why', 'let us'
 ];
 
-const COMMON_VOCABULARY = new Set([
+// Broad English dictionary word set (including common verbs, nouns, adjectives)
+const DICTIONARY_WORDS = new Set([
   'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 'it', 'for', 'not', 'on',
   'with', 'he', 'as', 'you', 'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they', 'we',
   'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their',
@@ -33,7 +34,18 @@ const COMMON_VOCABULARY = new Set([
   'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than', 'then', 'now',
   'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back', 'after', 'use', 'two',
   'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any',
-  'these', 'give', 'day', 'most', 'us', 'is', 'are', 'was', 'were', 'been', 'has', 'had'
+  'these', 'give', 'day', 'most', 'us', 'is', 'are', 'was', 'were', 'been', 'has', 'had',
+  'code', 'engineering', 'teams', 'team', 'software', 'lead', 'leader', 'leadership',
+  'growth', 'marketing', 'product', 'design', 'build', 'building', 'data', 'developer',
+  'developers', 'business', 'tech', 'technology', 'startup', 'strategy', 'scaling',
+  'learn', 'learning', 'lessons', 'mistake', 'mistakes', 'speed', 'velocity', 'customer',
+  'users', 'user', 'value', 'quality', 'test', 'testing', 'automated', 'framework',
+  'system', 'systems', 'production', 'post', 'posts', 'content', 'social', 'media',
+  'metrics', 'audience', 'create', 'creator', 'creators', 'scale', 'scaling', 'problem',
+  'solution', 'insights', 'tool', 'tools', 'guide', 'blueprint', 'results', 'focus',
+  'simple', 'clean', 'modern', 'effective', 'boost', 'workflow', 'management', 'career',
+  'experience', 'review', 'thoughts', 'today', 'tomorrow', 'always', 'never', 'proven',
+  'help', 'share', 'save', 'read', 'comment', 'drop', 'below', 'click', 'link'
 ]);
 
 /**
@@ -53,7 +65,7 @@ export function calculateLinguisticQuality(text: string): {
 
   const letters = clean.match(/[a-zA-Z]/g) || [];
   if (letters.length < 4) {
-    return { lqi: 0.05, isGibberish: true, vowelRatio: 0, recognizedWordRatio: 0 };
+    return { lqi: 0.02, isGibberish: true, vowelRatio: 0, recognizedWordRatio: 0 };
   }
 
   // 1. Vowel Balance Factor (English is typically 30%-48% vowels)
@@ -61,33 +73,42 @@ export function calculateLinguisticQuality(text: string): {
   const vowelRatio = vowels.length / letters.length;
   let vowelScore = 1.0;
   if (vowelRatio < 0.20 || vowelRatio > 0.65) {
-    // Sharp decline as vowel ratio approaches 0 or 1
     vowelScore = Math.max(0.0, 1.0 - Math.abs(vowelRatio - 0.38) * 3.5);
   }
 
-  // 2. Recognized Common Word Ratio
-  const words = clean.toLowerCase().match(/\b[a-z]{2,}\b/g) || [];
+  // 2. Recognized Dictionary Words
+  const tokens = clean.toLowerCase().match(/\b[a-z]{2,}\b/g) || [];
   let recognizedCount = 0;
-  for (const w of words) {
-    if (COMMON_VOCABULARY.has(w)) {
+  for (const t of tokens) {
+    if (DICTIONARY_WORDS.has(t)) {
       recognizedCount++;
     }
   }
-  const recognizedWordRatio = words.length > 0 ? recognizedCount / words.length : 0;
+  const recognizedWordRatio = tokens.length > 0 ? recognizedCount / tokens.length : 0;
 
-  // 3. Word Length & Character Sanity Factor
+  // 3. Word Length & Abnormal Consonant Cluster Penalties
   const rawWords = clean.split(/\s+/).filter(w => w.length > 0);
   let lengthPenalty = 0;
   for (const w of rawWords) {
-    if (w.length > 24) lengthPenalty += 0.35; // Abnormal keyboard mash tokens
-    if (/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{6,}/.test(w)) lengthPenalty += 0.25; // 6 consonants in a row
+    if (w.length > 20) lengthPenalty += 0.5; // Abnormal keyboard mash
+    if (/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{5,}/.test(w)) lengthPenalty += 0.4;
   }
-  const wordSanityFactor = Math.max(0.05, 1.0 - (lengthPenalty / Math.max(1, rawWords.length)));
+  const wordSanityFactor = Math.max(0.0, 1.0 - (lengthPenalty / Math.max(1, rawWords.length)));
 
-  // Combine metrics into continuous 0.0 - 1.0 LQI
-  // If text has normal words, recognizedWordRatio boosts it; if gibberish, both vowelScore and recognizedWordRatio are near 0.
-  const rawLQI = (vowelScore * 0.45) + (Math.min(1.0, recognizedWordRatio * 2.5) * 0.35) + (wordSanityFactor * 0.20);
-  const lqi = Math.max(0.02, Math.min(1.0, Math.round(rawLQI * 100) / 100));
+  // Strict Gating: If text has words but zero or negligible recognized English words, LQI must collapse near 0
+  let lqi = 0.0;
+  if (tokens.length > 0) {
+    if (recognizedWordRatio < 0.12) {
+      // Fake words or keyboard mash
+      lqi = Math.max(0.01, recognizedWordRatio * 0.15 * wordSanityFactor);
+    } else {
+      // Normal text with recognized vocabulary
+      const base = (recognizedWordRatio * 0.55) + (vowelScore * 0.25) + (wordSanityFactor * 0.20);
+      lqi = Math.max(0.02, Math.min(1.0, base));
+    }
+  }
+
+  lqi = Math.round(lqi * 100) / 100;
   const isGibberish = lqi < 0.30;
 
   return {
@@ -214,7 +235,6 @@ function evaluateHook(text: string, stats: TextStats, lqi: number): MetricScore 
     tips.push('Opening sentence exceeds 140 chars. Shorten to grab attention faster.');
   }
 
-  // Scale continuously by Linguistic Quality Index (LQI)
   const finalScore = Math.max(0, Math.min(20, Math.round(rawScore * lqi)));
 
   let rating: MetricScore['rating'] = 'Needs Improvement';
@@ -227,8 +247,8 @@ function evaluateHook(text: string, stats: TextStats, lqi: number): MetricScore 
     score: finalScore,
     maxScore: 20,
     rating,
-    explanation: lqi < 0.35
-      ? `Opening lacks recognizable vocabulary or coherent curiosity trigger (LQI: ${Math.round(lqi * 100)}%).`
+    explanation: lqi < 0.30
+      ? `Opening text contains unrecognizable vocabulary or random characters (Score: ${finalScore}/20).`
       : `Opening (${targetHook.slice(0, 45)}${targetHook.length > 45 ? '...' : ''}) scored ${finalScore}/20 on curiosity and punchiness.`,
     tips: tips.length > 0 ? tips : ['Start with a bold question, compelling number, or contrarian take to hook scrolling readers.']
   };
@@ -241,7 +261,6 @@ function evaluateReadability(stats: TextStats, lqi: number): MetricScore {
   let rawScore = 14;
   const tips: string[] = [];
 
-  // Optimal cadence: 8 to 16 words per sentence
   if (stats.avgSentenceLength >= 8 && stats.avgSentenceLength <= 16) {
     rawScore += 5;
     tips.push('Sentence length is well-balanced for mobile reading (8–16 words/sentence).');
@@ -269,8 +288,8 @@ function evaluateReadability(stats: TextStats, lqi: number): MetricScore {
     score: finalScore,
     maxScore: 20,
     rating,
-    explanation: lqi < 0.35
-      ? `Input contains irregular character patterns or low lexical clarity (Score: ${finalScore}/20).`
+    explanation: lqi < 0.30
+      ? `Input contains unintelligible character strings with near-zero readability (Score: ${finalScore}/20).`
       : `Assessed at ${stats.readabilityGrade} with ~${stats.avgSentenceLength} words per sentence.`,
     tips: tips.length > 0 ? tips : ['Keep sentence lengths varied and easy to read on mobile screens.']
   };
@@ -283,7 +302,7 @@ function evaluateCTA(text: string, stats: TextStats, lqi: number): MetricScore {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const endingSnippet = lines.slice(-2).join(' ').toLowerCase();
   
-  let rawScore = 2; // base
+  let rawScore = 1;
   const tips: string[] = [];
 
   const hasCTATrigger = CTA_TRIGGERS.some(trigger => endingSnippet.includes(trigger) || text.toLowerCase().includes(trigger));
@@ -348,7 +367,7 @@ function evaluateFormatting(text: string, stats: TextStats, lqi: number): Metric
     tips.push('Bullet points or numbered items make the post easy to skim.');
   }
 
-  const finalScore = Math.max(0, Math.min(20, Math.round(rawScore * Math.max(0.2, lqi))));
+  const finalScore = Math.max(0, Math.min(20, Math.round(rawScore * lqi)));
 
   let rating: MetricScore['rating'] = 'Needs Improvement';
   if (finalScore >= 16) rating = 'Excellent';
@@ -360,7 +379,7 @@ function evaluateFormatting(text: string, stats: TextStats, lqi: number): Metric
     score: finalScore,
     maxScore: 20,
     rating,
-    explanation: `${stats.paragraphCount} paragraph sections with ~${avgWordsPerParagraph} words per section.`,
+    explanation: `${stats.paragraphCount} paragraph sections with ~${avgWordsPerParagraph} words per section (Score: ${finalScore}/20).`,
     tips: tips.length > 0 ? tips : ['Use double line breaks to ensure readability on mobile feeds.']
   };
 }
@@ -369,7 +388,7 @@ function evaluateFormatting(text: string, stats: TextStats, lqi: number): Metric
  * Evaluates Hashtags & Visuals (0 - 10) continuously
  */
 function evaluateHashtagsAndEmojis(stats: TextStats, lqi: number): MetricScore {
-  let rawScore = 3;
+  let rawScore = 2;
   const tips: string[] = [];
 
   // Hashtags
@@ -385,14 +404,14 @@ function evaluateHashtagsAndEmojis(stats: TextStats, lqi: number): MetricScore {
 
   // Emojis
   if (stats.emojiCount >= 1 && stats.emojiCount <= 6) {
-    rawScore += 3;
+    rawScore += 4;
     tips.push('Tasteful emoji usage creates visual anchor points.');
   } else if (stats.emojiCount > 10) {
     rawScore -= 1;
     tips.push('Heavy emoji usage may distract from the core value proposition.');
   }
 
-  const finalScore = Math.max(0, Math.min(10, Math.round(rawScore * Math.max(0.1, lqi))));
+  const finalScore = Math.max(0, Math.min(10, Math.round(rawScore * lqi)));
 
   let rating: MetricScore['rating'] = 'Needs Improvement';
   if (finalScore >= 8) rating = 'Excellent';
@@ -414,14 +433,14 @@ function evaluateHashtagsAndEmojis(stats: TextStats, lqi: number): MetricScore {
  */
 function evaluateTone(text: string, stats: TextStats, lqi: number): { metric: MetricScore; detectedTone: string } {
   const lower = text.toLowerCase();
-  let rawScore = 4;
+  let rawScore = 3;
   const tips: string[] = [];
 
   const posCount = POSITIVE_WORDS.filter(w => lower.includes(w)).length;
   const convCount = CONVERSATIONAL_WORDS.filter(w => lower.includes(w)).length;
 
   if (convCount >= 2) {
-    rawScore += 3;
+    rawScore += 4;
     tips.push('Direct reader address ("you/your") creates strong personal resonance.');
   }
 
@@ -433,7 +452,7 @@ function evaluateTone(text: string, stats: TextStats, lqi: number): { metric: Me
   const finalScore = Math.max(0, Math.min(10, Math.round(rawScore * lqi)));
 
   let detectedTone = 'Informative & Professional';
-  if (lqi < 0.35) {
+  if (lqi < 0.30) {
     detectedTone = 'Unintelligible / Noise';
   } else if (stats.questionCount >= 2 && convCount >= 3) {
     detectedTone = 'Conversational & Interactive';
@@ -471,9 +490,9 @@ function evaluatePlatforms(text: string, stats: TextStats, lqi: number): {
 } {
   const charLen = stats.charCount;
 
-  if (lqi < 0.35) {
-    const lowRec = ['Input is unintelligible or contains random characters. Re-enter valid content.'];
-    const pScore = Math.max(2, Math.min(25, Math.round(20 * lqi)));
+  if (lqi < 0.30) {
+    const lowRec = ['Input contains corrupted or random characters. Re-enter valid content.'];
+    const pScore = Math.max(0, Math.min(15, Math.round(20 * lqi)));
     return {
       linkedin: {
         platform: 'LinkedIn',
@@ -560,7 +579,7 @@ function evaluatePlatforms(text: string, stats: TextStats, lqi: number): {
   return {
     linkedin: {
       platform: 'LinkedIn',
-      score: Math.min(100, Math.max(5, Math.round(liScore * lqi))),
+      score: Math.min(100, Math.max(0, Math.round(liScore * lqi))),
       characterCount: charLen,
       maxRecommendedCharacters: 1500,
       hardLimit: 3000,
@@ -570,7 +589,7 @@ function evaluatePlatforms(text: string, stats: TextStats, lqi: number): {
     },
     x: {
       platform: 'X (Twitter)',
-      score: Math.min(100, Math.max(5, Math.round(xScore * lqi))),
+      score: Math.min(100, Math.max(0, Math.round(xScore * lqi))),
       characterCount: charLen,
       maxRecommendedCharacters: 280,
       hardLimit: 280,
@@ -580,7 +599,7 @@ function evaluatePlatforms(text: string, stats: TextStats, lqi: number): {
     },
     instagram: {
       platform: 'Instagram',
-      score: Math.min(100, Math.max(5, Math.round(igScore * lqi))),
+      score: Math.min(100, Math.max(0, Math.round(igScore * lqi))),
       characterCount: charLen,
       maxRecommendedCharacters: 1000,
       hardLimit: 2200,
@@ -606,7 +625,7 @@ const COMMON_STOP_WORDS = new Set([
  * Generates Actionable Content Improvement Suggestions
  */
 function generateActionableSuggestions(text: string, stats: TextStats, lqi: number): Suggestions {
-  if (lqi < 0.35) {
+  if (lqi < 0.30) {
     return {
       hooks: [
         '❓ Question Hook: "What is the biggest lesson your team learned this month?"',
@@ -623,15 +642,16 @@ function generateActionableSuggestions(text: string, stats: TextStats, lqi: numb
     };
   }
 
+  // Only extract keywords that are in recognized vocabulary to avoid gibberish hashtags
   const words = text.match(/\b[A-Za-z]{4,}\b/g) || [];
-  const uniqueKeyWords = Array.from(new Set(words.map(w => w.toLowerCase())))
-    .filter(w => !COMMON_STOP_WORDS.has(w) && w.length >= 4)
+  const validKeyWords = Array.from(new Set(words.map(w => w.toLowerCase())))
+    .filter(w => DICTIONARY_WORDS.has(w) && !COMMON_STOP_WORDS.has(w))
     .slice(0, 5);
 
-  const topicName = uniqueKeyWords[0] ? uniqueKeyWords[0].charAt(0).toUpperCase() + uniqueKeyWords[0].slice(1) : 'Content';
-  const subTopic = uniqueKeyWords[1] ? uniqueKeyWords[1].charAt(0).toUpperCase() + uniqueKeyWords[1].slice(1) : 'Growth';
+  const topicName = validKeyWords[0] ? validKeyWords[0].charAt(0).toUpperCase() + validKeyWords[0].slice(1) : 'Content';
+  const subTopic = validKeyWords[1] ? validKeyWords[1].charAt(0).toUpperCase() + validKeyWords[1].slice(1) : 'Growth';
 
-  let suggestedTags = uniqueKeyWords.map(w => `#${w.charAt(0).toUpperCase() + w.slice(1)}`);
+  let suggestedTags = validKeyWords.map(w => `#${w.charAt(0).toUpperCase() + w.slice(1)}`);
   if (suggestedTags.length < 3) {
     suggestedTags = Array.from(new Set([...suggestedTags, '#Growth', '#Productivity', '#Leadership', '#TechTrends']));
   }
