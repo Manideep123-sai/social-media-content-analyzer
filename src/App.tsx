@@ -25,15 +25,6 @@ export const App: React.FC = () => {
     message: ''
   });
 
-  // Load initial sample so reviewer sees full dashboard immediately on start
-  useEffect(() => {
-    const initialSample = SAMPLES.linkedin;
-    setContent(initialSample.content);
-    setSourceType('sample');
-    const res = analyzeContent(initialSample.content, 'sample');
-    setAnalysisResult(res);
-  }, []);
-
   const handleSaveApiKey = (key: string) => {
     setApiKey(key);
     if (key) {
@@ -257,8 +248,37 @@ export const App: React.FC = () => {
               {analysisResult ? (
                 <AnalysisDashboard result={analysisResult} />
               ) : (
-                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
-                  Upload a document or paste text to see engagement analysis.
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <Sparkles className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Ready to Analyze</h3>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md">
+                      Upload a PDF document, scan an image with OCR, or paste your post copy to evaluate engagement score, readability, and platform rules.
+                    </p>
+                  </div>
+                  <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                    <span className="text-xs text-slate-400 mr-1">Quick test:</span>
+                    <button
+                      onClick={() => handleLoadSample('linkedin')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      LinkedIn Post
+                    </button>
+                    <button
+                      onClick={() => handleLoadSample('x')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      X / Twitter
+                    </button>
+                    <button
+                      onClick={() => handleLoadSample('pdf')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      Strategy PDF
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -170,13 +170,13 @@ export const PlatformOptimizer: React.FC<PlatformOptimizerProps> = ({ platforms,
             {/* Mockup Container */}
             <div className="bg-slate-950 rounded-xl p-3.5 border border-slate-800/90 text-xs">
               <div className="flex items-center space-x-2.5 mb-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white text-xs">
-                  U
+                <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-indigo-400 text-xs">
+                  {activePlatform === 'linkedin' ? 'IN' : activePlatform === 'x' ? 'X' : 'IG'}
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-200">User Name</p>
+                  <p className="font-semibold text-slate-200">Your Account</p>
                   <p className="text-[10px] text-slate-500">
-                    {activePlatform === 'linkedin' ? 'Growth Specialist • 1st' : activePlatform === 'x' ? '@username' : 'username'}
+                    {activePlatform === 'linkedin' ? 'Your Headline • 1st' : activePlatform === 'x' ? '@your_handle' : 'your_handle'}
                   </p>
                 </div>
               </div>

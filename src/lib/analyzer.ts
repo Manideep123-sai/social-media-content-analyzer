@@ -477,33 +477,48 @@ function evaluatePlatforms(text: string, stats: TextStats): {
   };
 }
 
+const COMMON_STOP_WORDS = new Set([
+  'this', 'that', 'with', 'from', 'have', 'were', 'what', 'your', 'about', 'some',
+  'stop', 'here', 'will', 'when', 'more', 'their', 'there', 'they', 'them', 'these',
+  'those', 'been', 'than', 'then', 'also', 'into', 'only', 'just', 'make', 'most',
+  'very', 'even', 'over', 'such', 'take', 'time', 'well', 'where', 'which', 'whose',
+  'how', 'each', 'does', 'done', 'doing', 'give', 'gave', 'given', 'know', 'knew',
+  'like', 'look', 'come', 'came', 'could', 'should', 'would', 'want', 'said', 'tell',
+  'told', 'need', 'using', 'used', 'uses', 'drop', 'below', 'year', 'years', 'post',
+  'posts', 'read', 'share', 'save', 'agree', 'short', 'term', 'vanity'
+]);
+
 /**
  * Generates Actionable Content Improvement Suggestions
  */
 function generateActionableSuggestions(text: string, stats: TextStats): Suggestions {
   const words = text.match(/\b[A-Za-z]{4,}\b/g) || [];
   const uniqueKeyWords = Array.from(new Set(words.map(w => w.toLowerCase())))
-    .filter(w => !['this', 'that', 'with', 'from', 'have', 'were', 'what', 'your', 'about', 'some'].includes(w))
+    .filter(w => !COMMON_STOP_WORDS.has(w) && w.length >= 4)
     .slice(0, 5);
 
-  const suggestedTags = uniqueKeyWords.map(w => `#${w.charAt(0).toUpperCase() + w.slice(1)}`);
-  if (suggestedTags.length === 0) {
-    suggestedTags.push('#ContentStrategy', '#Growth', '#Productivity');
+  const topicName = uniqueKeyWords[0] ? uniqueKeyWords[0].charAt(0).toUpperCase() + uniqueKeyWords[0].slice(1) : 'Content';
+  const subTopic = uniqueKeyWords[1] ? uniqueKeyWords[1].charAt(0).toUpperCase() + uniqueKeyWords[1].slice(1) : 'Growth';
+
+  // Hashtags
+  let suggestedTags = uniqueKeyWords.map(w => `#${w.charAt(0).toUpperCase() + w.slice(1)}`);
+  if (suggestedTags.length < 3) {
+    suggestedTags = Array.from(new Set([...suggestedTags, '#Growth', '#Productivity', '#Leadership', '#TechTrends']));
   }
+  suggestedTags = suggestedTags.slice(0, 5);
 
   // Hook suggestions
-  const firstSentence = text.split(/[.!?\n]/)[0]?.trim() || 'Your core message';
   const hooks = [
-    `❓ Question Hook: "What is the #1 mistake most people make with ${uniqueKeyWords[0] || 'this'}?"`,
-    `📊 Data Hook: "90% of creators overlook this simple lesson on ${uniqueKeyWords[0] || 'growth'}:"`,
-    `🔥 Contrarian Hook: "Unpopular opinion: Stop doing ${uniqueKeyWords[1] || uniqueKeyWords[0] || 'things the traditional way'}. Here is why:"`
+    `❓ Question Hook: "What is the #1 lesson high performers learn about ${topicName}?"`,
+    `📊 Data Hook: "90% of leaders overlook this single rule for ${topicName} and ${subTopic}:"`,
+    `🔥 Contrarian Hook: "Unpopular opinion: Stop doing ${topicName} the traditional way. Here is why:"`
   ];
 
   // CTA suggestions
   const ctas = [
-    `💬 "What has been your biggest takeaway with this? Drop your thoughts below!"`,
-    `📌 "Save this post for later and share it with someone who needs this today."`,
-    `🚀 "Which strategy will you try first? 1 or 2? Let me know in the comments."`
+    `💬 "What has been your biggest takeaway with ${topicName}? Drop your thoughts below!"`,
+    `📌 "Save this post for your next project and share it with someone building today."`,
+    `🚀 "Which insight resonates most with your current workflow? Let me know in the comments."`
   ];
 
   // Formatting tips
